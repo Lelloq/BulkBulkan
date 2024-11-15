@@ -5,6 +5,7 @@ cmake_minimum_required (VERSION 3.8)
 
 project ("BulkBulkan")
 include_directories (${PROJECT_SOURCE_DIR})
+include_directories(Libs)
 
 file(GLOB_RECURSE _source_list ${PROJECT_NAME}.cpp* ${PROJECT_NAME}.h* ${PROJECT_NAME}.hpp* )
 foreach(_source IN ITEMS ${_source_list})
@@ -14,8 +15,15 @@ foreach(_source IN ITEMS ${_source_list})
 	source_group("${_group_path}" FILES "${_source}")
 endforeach()
 
-# Add source to this project's executable.
-add_executable (BulkBulkan ${_source_list})
+find_package(Vulkan REQUIRED)
+
+add_subdirectory(Libs/glfw-3.4)
+add_subdirectory(Libs/glm)
+
+add_executable (${PROJECT_NAME} ${_source_list})
+
+target_link_libraries(${PROJECT_NAME} glfw Vulkan::Vulkan)
+
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
 	set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
@@ -24,4 +32,3 @@ endif()
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-# TODO: Add tests and install targets if needed.
