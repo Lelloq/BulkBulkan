@@ -1,34 +1,55 @@
 ﻿#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
-
 #include <iostream>
+#include <stdexcept>
+#include <cstdlib>
 
-int main() {
-	glfwInit();
+const uint32_t WIDTH = 1280;
+const uint32_t HEIGHT = 720;
 
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", nullptr, nullptr);
+class TriangleApp {
+public:
+	void run() {
+		initVulkan();
+		mainLoop();
+		cleanup();
+	};
 
-	uint32_t extensionCount = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	void initVulkan() {
+		glfwInit();
 
-	std::cout << extensionCount << " extensions supported\n";
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	auto matrix = glm::mat4{};
-	auto vec = glm::vec4{};
-	auto test = matrix * vec;
-
-	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
+		window = glfwCreateWindow(WIDTH, HEIGHT, "Bulkan", nullptr, nullptr);
 	}
 
-	glfwDestroyWindow(window);
+	void mainLoop() {
+		while (!glfwWindowShouldClose(window)) {
+			glfwPollEvents();
+		}
+	}
 
-	glfwTerminate();
+	void cleanup() {
+		glfwDestroyWindow(window);
+		glfwTerminate();
+	}
+private:
 
-	return 0;
+	GLFWwindow* window{};
+};
+
+int main() {
+	TriangleApp app{};
+
+	try {
+		app.run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
 }
