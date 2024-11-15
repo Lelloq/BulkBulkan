@@ -18,8 +18,8 @@ int main() {
 
 	std::cout << extensionCount << " extensions supported\n";
 
-	glm::mat4 matrix;
-	glm::vec4 vec;
+	auto matrix = glm::mat4{};
+	auto vec = glm::vec4{};
 	auto test = matrix * vec;
 
 	while (!glfwWindowShouldClose(window)) {
