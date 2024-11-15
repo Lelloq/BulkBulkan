@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 int main() {
-	TriangleApp app{};
+	BulkBulkan::TriangleApp app{};
 
 	try {
 		app.run();

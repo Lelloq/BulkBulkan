@@ -1,20 +1,22 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-const uint32_t WIDTH = 1280;
-const uint32_t HEIGHT = 720;
+namespace BulkBulkan {
+	class TriangleApp {
+	public:
+		TriangleApp();
 
-class TriangleApp {
-public:
-	TriangleApp();
+		void run();
 
-	void run();
-	void createInstance();
-	void initVulkan();
-	void mainLoop();
-	void cleanup();
+	private:
+		void createInstance();
+		void initVulkan();
+		void mainLoop();
+		void cleanup();
+		void setupDebugMessenger();
 
-private:
-	VkInstance _instance{};
-	GLFWwindow* _window{};
-};
+		VkInstance _instance{};
+		GLFWwindow* _window{};
+		VkDebugUtilsMessengerEXT _debugMessenger{};
+	};
+}

@@ -2,63 +2,200 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <cstring>
+#include <vector>
 
-TriangleApp::TriangleApp()
-{
-	initVulkan();
-}
+const uint32_t WIDTH = 1280;
+const uint32_t HEIGHT = 720;
 
-void TriangleApp::run() {
-	mainLoop();
-	cleanup();
-}
+const std::vector<const char*> validationLayers = {
+	"VK_LAYER_KHRONOS_validation"
+};
 
-void TriangleApp::cleanup() {
-	glfwDestroyWindow(_window);
-	glfwTerminate();
-}
+#ifdef NDEBUG
+const bool ENABLE_VALIDATION_LAYERS = false;
+#else
+const bool ENABLE_VALIDATION_LAYERS = true;
+#endif
 
-void TriangleApp::mainLoop() {
-	while (!glfwWindowShouldClose(_window)) {
-		glfwPollEvents();
+//Statics (may move them soon as the project gets larger)
+namespace {
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData) {
+
+		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+		return VK_FALSE;
 	}
 }
 
-void TriangleApp::createInstance() {
-	auto appInfo = VkApplicationInfo{};
-	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Hello Triangle";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+namespace {
+	bool checkValidationSupport() {
+		auto layerCount = uint32_t{ 0 };
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
-	auto createInfo = VkInstanceCreateInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	createInfo.pApplicationInfo = &appInfo;
+		auto availableLayers = std::vector<VkLayerProperties>(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-	auto glfwExtensionCount = uint32_t{ 0 };
-	const char** glfwExtensions{};
+		for (const auto* layerName : validationLayers) {
+			auto foundLayer = false;
 
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+			for (const auto& layerProps : availableLayers) {
+				if (strcmp(layerName, layerProps.layerName) == 0) {
+					foundLayer = true;
+					break;
+				}
+			}
+			if (!foundLayer) {
+				return false;
+			}
+		}
 
-	createInfo.enabledExtensionCount = glfwExtensionCount;
-	createInfo.ppEnabledExtensionNames = glfwExtensions;
+		return true;
+	}
 
-	createInfo.enabledLayerCount = 0;
+	std::vector<const char*> getRequiredExtensions() {
+		auto glfwExtensionCount = uint32_t{ 0 };
+		const char** glfwExtensions{};
+		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-	auto result = vkCreateInstance(&createInfo, nullptr, &_instance);
+		auto extensions = std::vector<const char*>(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-	if (result != VK_SUCCESS) {
-		throw std::runtime_error("failed to create instance");
+		if (ENABLE_VALIDATION_LAYERS) {
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+
+		return extensions;
+	}
+
+	VkResult createDebugUtilsMessengerEXT(VkInstance instance,
+		const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+		const VkAllocationCallbacks* pAllocator,
+		VkDebugUtilsMessengerEXT* pDebugMessenger) {
+		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+		if (func != nullptr) {
+			return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+		}
+		else {
+			return VK_ERROR_EXTENSION_NOT_PRESENT;
+		}
+	}
+
+	void destroyDebugUtilsMessengerEXT(VkInstance instance,
+		VkDebugUtilsMessengerEXT debugMessenger,
+		const VkAllocationCallbacks* pAllocator) {
+		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+		if (func != nullptr) {
+			func(instance, debugMessenger, pAllocator);
+		}
+	}
+
+	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+		createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		createInfo.pfnUserCallback = debugCallback;
 	}
 }
 
-void TriangleApp::initVulkan() {
-	createInstance();
-	glfwInit();
+namespace BulkBulkan {
+	TriangleApp::TriangleApp()
+	{
+		initVulkan();
+	}
 
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	void TriangleApp::run() {
+		mainLoop();
+		cleanup();
+	}
 
-	_window = glfwCreateWindow(WIDTH, HEIGHT, "Bulkan", nullptr, nullptr);
+	void TriangleApp::cleanup()
+	{
+		if (ENABLE_VALIDATION_LAYERS) {
+			destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+		}
+
+		vkDestroyInstance(_instance, nullptr);
+		glfwDestroyWindow(_window);
+		glfwTerminate();
+	}
+
+	void TriangleApp::setupDebugMessenger()
+	{
+		if (!ENABLE_VALIDATION_LAYERS) return;
+
+		auto createInfo = VkDebugUtilsMessengerCreateInfoEXT{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		createInfo.pfnUserCallback = debugCallback;
+		createInfo.pUserData = nullptr; // Optional
+
+		populateDebugMessengerCreateInfo(createInfo);
+
+		if (createDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger) != VK_SUCCESS) {
+			throw std::runtime_error("failed to set up debug messenger");
+		}
+	}
+
+	void TriangleApp::createInstance() {
+		if (ENABLE_VALIDATION_LAYERS and !checkValidationSupport()) {
+			throw std::runtime_error("validation layers are requested, but not available");
+		}
+
+		auto appInfo = VkApplicationInfo{};
+		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		appInfo.pApplicationName = "Hello Triangle";
+		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+		appInfo.apiVersion = VK_API_VERSION_1_0;
+
+		auto createInfo = VkInstanceCreateInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		createInfo.pApplicationInfo = &appInfo;
+
+		auto extensions = getRequiredExtensions();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+		createInfo.ppEnabledExtensionNames = extensions.data();
+
+		auto debugCreateInfo = VkDebugUtilsMessengerCreateInfoEXT{};
+		if (ENABLE_VALIDATION_LAYERS) {
+			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledLayerNames = validationLayers.data();
+
+			populateDebugMessengerCreateInfo(debugCreateInfo);
+			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)(&debugCreateInfo);
+		}
+		else {
+			createInfo.enabledLayerCount = 0;
+			createInfo.pNext = nullptr;
+		}
+
+		auto result = vkCreateInstance(&createInfo, nullptr, &_instance);
+
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("failed to create instance");
+		}
+
+	}
+
+	void TriangleApp::initVulkan() {
+		createInstance();
+		setupDebugMessenger();
+		glfwInit();
+
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+		_window = glfwCreateWindow(WIDTH, HEIGHT, "Bulkan", nullptr, nullptr);
+	}
+
+	void TriangleApp::mainLoop() {
+		while (!glfwWindowShouldClose(_window)) {
+			glfwPollEvents();
+		}
+	}
 }
