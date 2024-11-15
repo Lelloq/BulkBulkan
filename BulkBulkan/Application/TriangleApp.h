@@ -4,12 +4,11 @@
 namespace BulkBulkan {
 	class TriangleApp {
 	public:
-		TriangleApp();
-
 		void run();
 
 	private:
 		void createInstance();
+		void initWindow();
 		void initVulkan();
 		void mainLoop();
 		void cleanup();

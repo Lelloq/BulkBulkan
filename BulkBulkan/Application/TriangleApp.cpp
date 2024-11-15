@@ -102,12 +102,9 @@ namespace {
 }
 
 namespace BulkBulkan {
-	TriangleApp::TriangleApp()
-	{
-		initVulkan();
-	}
-
 	void TriangleApp::run() {
+		initWindow();
+		initVulkan();
 		mainLoop();
 		cleanup();
 	}
@@ -128,12 +125,6 @@ namespace BulkBulkan {
 		if (!ENABLE_VALIDATION_LAYERS) return;
 
 		auto createInfo = VkDebugUtilsMessengerCreateInfoEXT{};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-		createInfo.pfnUserCallback = debugCallback;
-		createInfo.pUserData = nullptr; // Optional
-
 		populateDebugMessengerCreateInfo(createInfo);
 
 		if (createDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger) != VK_SUCCESS) {
@@ -162,6 +153,12 @@ namespace BulkBulkan {
 		createInfo.ppEnabledExtensionNames = extensions.data();
 
 		auto debugCreateInfo = VkDebugUtilsMessengerCreateInfoEXT{};
+		debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		debugCreateInfo.pfnUserCallback = debugCallback;
+		debugCreateInfo.pUserData = nullptr;
+
 		if (ENABLE_VALIDATION_LAYERS) {
 			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 			createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -182,15 +179,19 @@ namespace BulkBulkan {
 
 	}
 
-	void TriangleApp::initVulkan() {
-		createInstance();
-		setupDebugMessenger();
+	void TriangleApp::initWindow()
+	{
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 		_window = glfwCreateWindow(WIDTH, HEIGHT, "Bulkan", nullptr, nullptr);
+	}
+
+	void TriangleApp::initVulkan() {
+		createInstance();
+		setupDebugMessenger();
 	}
 
 	void TriangleApp::mainLoop() {
