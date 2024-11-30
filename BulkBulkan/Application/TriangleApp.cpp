@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include <map>
 
 const uint32_t WIDTH = 1280;
 const uint32_t HEIGHT = 720;
@@ -31,6 +32,7 @@ namespace {
 	}
 }
 
+//Validation
 namespace {
 	bool checkValidationSupport() {
 		auto layerCount = uint32_t{ 0 };
@@ -99,6 +101,64 @@ namespace {
 		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 		createInfo.pfnUserCallback = debugCallback;
 	}
+
+
+}
+
+//Device
+namespace {
+	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+		QueueFamilyIndices indices;
+
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+		int i = 0;
+		for (const auto& queueFamily : queueFamilies) {
+			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+				indices.graphicsFamily = i;
+			}
+
+			if (indices.isComplete()) {
+				break;
+			}
+
+			i++;
+		}
+
+		return indices;
+	}
+
+	int rateDeviceSuitability(VkPhysicalDevice device) {
+		VkPhysicalDeviceProperties deviceProperties;
+		vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+		VkPhysicalDeviceFeatures deviceFeatures;
+		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+		auto score = 0;
+
+		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+			score += 1000;
+		}
+
+		score += deviceProperties.limits.maxImageDimension2D;
+
+		if (!deviceFeatures.geometryShader) {
+			return 0;
+		}
+
+		QueueFamilyIndices indices = findQueueFamilies(device);
+		if (!indices.isComplete())
+		{
+			return 0;
+		}
+
+		return score;
+	}
 }
 
 namespace BulkBulkan {
@@ -129,6 +189,33 @@ namespace BulkBulkan {
 
 		if (createDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger) != VK_SUCCESS) {
 			throw std::runtime_error("failed to set up debug messenger");
+		}
+	}
+
+	void TriangleApp::pickPhysicalDevice()
+	{
+		auto deviceCount = 0u;
+		vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+
+		if (deviceCount == 0) {
+			throw std::runtime_error("Failed to load GPUs with vulkan support");
+		}
+
+		auto devices = std::vector<VkPhysicalDevice>(deviceCount);
+		vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
+
+		auto candidates = std::multimap<int, VkPhysicalDevice>{};
+
+		for (auto const& device : devices) {
+			int score = rateDeviceSuitability(device);
+			candidates.insert(std::make_pair(score, device));
+		}
+
+		if (candidates.begin()->first > 0) {
+			_physicalDevice = candidates.rbegin()->second;
+		}
+		else {
+			throw std::runtime_error("failed to find a suitable GPU!");
 		}
 	}
 
@@ -192,6 +279,7 @@ namespace BulkBulkan {
 	void TriangleApp::initVulkan() {
 		createInstance();
 		setupDebugMessenger();
+		pickPhysicalDevice();
 	}
 
 	void TriangleApp::mainLoop() {
