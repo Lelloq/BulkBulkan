@@ -163,13 +163,25 @@ namespace {
 
 namespace BulkBulkan {
 	void TriangleApp::run() {
-		initWindow();
-		initVulkan();
-		mainLoop();
-		cleanup();
+		while (!glfwWindowShouldClose(_window)) {
+			glfwPollEvents();
+		}
 	}
 
-	void TriangleApp::cleanup()
+	TriangleApp::TriangleApp()
+	{
+		glfwInit();
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+		_window = glfwCreateWindow(WIDTH, HEIGHT, "Bulkan", nullptr, nullptr);
+
+		createInstance();
+		setupDebugMessenger();
+		pickPhysicalDevice();
+	}
+
+	TriangleApp::~TriangleApp()
 	{
 		if (ENABLE_VALIDATION_LAYERS) {
 			destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
@@ -299,29 +311,6 @@ namespace BulkBulkan {
 
 		if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to create instance");
-		}
-
-	}
-
-	void TriangleApp::initWindow()
-	{
-		glfwInit();
-
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-		_window = glfwCreateWindow(WIDTH, HEIGHT, "Bulkan", nullptr, nullptr);
-	}
-
-	void TriangleApp::initVulkan() {
-		createInstance();
-		setupDebugMessenger();
-		pickPhysicalDevice();
-	}
-
-	void TriangleApp::mainLoop() {
-		while (!glfwWindowShouldClose(_window)) {
-			glfwPollEvents();
 		}
 	}
 }

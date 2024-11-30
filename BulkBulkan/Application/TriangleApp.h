@@ -15,21 +15,20 @@ namespace BulkBulkan {
 	public:
 		void run();
 
+		TriangleApp();
+		~TriangleApp();
 	private:
 		void createInstance();
-		void initWindow();
-		void initVulkan();
-		void mainLoop();
-		void cleanup();
 		void setupDebugMessenger();
 		void pickPhysicalDevice();
 		void createLogicalDevice();
 
-		VkInstance _instance{};
 		GLFWwindow* _window{};
-		VkDebugUtilsMessengerEXT _debugMessenger{};
-		VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
-		VkDevice _device{};
+
 		VkQueue _graphicsQueue{};
+		VkDevice _device{};
+		VkInstance _instance{};
+		VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
+		VkDebugUtilsMessengerEXT _debugMessenger{};
 	};
 }
