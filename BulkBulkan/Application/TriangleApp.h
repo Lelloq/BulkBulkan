@@ -23,10 +23,13 @@ namespace BulkBulkan {
 		void cleanup();
 		void setupDebugMessenger();
 		void pickPhysicalDevice();
+		void createLogicalDevice();
 
 		VkInstance _instance{};
 		GLFWwindow* _window{};
 		VkDebugUtilsMessengerEXT _debugMessenger{};
 		VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
+		VkDevice _device{};
+		VkQueue _graphicsQueue{};
 	};
 }

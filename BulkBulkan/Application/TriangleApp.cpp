@@ -9,7 +9,7 @@
 const uint32_t WIDTH = 1280;
 const uint32_t HEIGHT = 720;
 
-const std::vector<const char*> validationLayers = {
+const std::vector<const char*> kValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
@@ -41,7 +41,7 @@ namespace {
 		auto availableLayers = std::vector<VkLayerProperties>(layerCount);
 		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-		for (const auto* layerName : validationLayers) {
+		for (const auto* layerName : kValidationLayers) {
 			auto foundLayer = false;
 
 			for (const auto& layerProps : availableLayers) {
@@ -110,7 +110,7 @@ namespace {
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
 		QueueFamilyIndices indices;
 
-		uint32_t queueFamilyCount = 0;
+		auto queueFamilyCount = 0u;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
 		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
@@ -133,10 +133,10 @@ namespace {
 	}
 
 	int rateDeviceSuitability(VkPhysicalDevice device) {
-		VkPhysicalDeviceProperties deviceProperties;
+		auto deviceProperties = VkPhysicalDeviceProperties{};
 		vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-		VkPhysicalDeviceFeatures deviceFeatures;
+		auto deviceFeatures = VkPhysicalDeviceFeatures{};
 		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
 		auto score = 0;
@@ -151,7 +151,7 @@ namespace {
 			return 0;
 		}
 
-		QueueFamilyIndices indices = findQueueFamilies(device);
+		auto indices = findQueueFamilies(device);
 		if (!indices.isComplete())
 		{
 			return 0;
@@ -176,6 +176,8 @@ namespace BulkBulkan {
 		}
 
 		vkDestroyInstance(_instance, nullptr);
+		vkDestroyDevice(_device, nullptr);
+
 		glfwDestroyWindow(_window);
 		glfwTerminate();
 	}
@@ -219,6 +221,41 @@ namespace BulkBulkan {
 		}
 	}
 
+	void TriangleApp::createLogicalDevice()
+	{
+		auto indices = findQueueFamilies(_physicalDevice);
+
+		auto queueCreateInfo = VkDeviceQueueCreateInfo{};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+		queueCreateInfo.queueCount = 1;
+
+		auto queuePriority = 1.0f;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+
+		auto deviceFeatures = VkPhysicalDeviceFeatures{};
+
+		auto createInfo = VkDeviceCreateInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		createInfo.pQueueCreateInfos = &queueCreateInfo;
+		createInfo.queueCreateInfoCount = 1;
+		createInfo.pEnabledFeatures = &deviceFeatures;
+
+		if (ENABLE_VALIDATION_LAYERS) {
+			createInfo.enabledLayerCount = static_cast<uint32_t>(kValidationLayers.size());
+			createInfo.ppEnabledLayerNames = kValidationLayers.data();
+		}
+		else {
+			createInfo.enabledLayerCount = 0;
+		}
+
+		if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create logical device!");
+		}
+
+		vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &_graphicsQueue);
+	}
+
 	void TriangleApp::createInstance() {
 		if (ENABLE_VALIDATION_LAYERS and !checkValidationSupport()) {
 			throw std::runtime_error("validation layers are requested, but not available");
@@ -247,8 +284,8 @@ namespace BulkBulkan {
 		debugCreateInfo.pUserData = nullptr;
 
 		if (ENABLE_VALIDATION_LAYERS) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
+			createInfo.enabledLayerCount = static_cast<uint32_t>(kValidationLayers.size());
+			createInfo.ppEnabledLayerNames = kValidationLayers.data();
 
 			populateDebugMessengerCreateInfo(debugCreateInfo);
 			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)(&debugCreateInfo);
